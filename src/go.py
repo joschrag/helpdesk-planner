@@ -8,7 +8,7 @@ from openpyxl.styles import NamedStyle, Font, Border, Side, PatternFill
 import datetime as dt
 from typing import Any
 import time
-
+from pprint import pformat
 
 class Termin:
     """Class containing information about the events."""
@@ -47,23 +47,33 @@ class Termin:
         self.hasmoved = False
         self.isLeft = False
 
+
+    def __str__(self) -> str:
+        """Get string representation.
+
+        Returns:
+            str: string description.
+        """
+        return "\n"+"\n".join([f"{pair[0]}: {pair[1]}" for pair in list(vars(self).items())])
+
     def check_overlap(self) -> None:
         """Check if other Class object overlap timewise."""
         for termin in self.instances:
             if not self == termin and termin.wt == self.wt:
                 if (
-                    (termin.start < self.start < termin.finish)
-                    or (termin.start < self.finish < termin.finish)
-                    or (self.start < termin.start < self.finish)
-                    or (self.start < termin.finish < self.finish)
+                    (termin.start <= self.start <= termin.finish)
+                    or (termin.start <= self.finish <= termin.finish)
+                    or (self.start <= termin.start <= self.finish)
+                    or (self.start <= termin.finish <= self.finish)
                 ):
                     self.deu.append(termin)
 
+
     def correct_colss(self) -> None:
         """Correct columns if overlap exists."""
-        for ter in self.deu:
-            if ter.hasmoved:
-                self.isLeft = not ter.isLeft
+        for termin in self.deu:
+            if termin.hasmoved:
+                self.isLeft = not termin.isLeft
                 self.hasmoved = True
             else:
                 self.isLeft = True
@@ -120,8 +130,8 @@ class Termin:
         Args:
             ws (Worksheet): output Worksheet
         """
-        colss = {"Rüsselsheim": "E2EFDA", "WBS": "DDEBF7", "online": "FFF2CC"}
-        color = colss[self.ort]
+        cols = {"Rüsselsheim": "E2EFDA", "WBS": "DDEBF7", "online": "FFF2CC"}
+        color = cols[self.ort]
         for rows in ws.iter_rows(
             min_row=self.rows[0],
             max_row=self.rows[1],
@@ -181,7 +191,6 @@ class Termin:
         """
         room_dict = {"Rüsselsheim": "G007", "WBS": "II-02", "online": "online"}
         name_cell = ws.cell(self.rows[0], self.cols[0])
-        sem_cell = ws.cell(self.rows[0] + 1, self.cols[0])
         exp_cell = ws.cell(self.rows[0] + 1, self.cols[0])
         ort_cell = ws.cell(self.rows[1], self.cols[0])
         name_cell.value = self.tutor
@@ -198,7 +207,7 @@ def load_template() -> pathlib.Path:
     Returns:
         pathlib.Path: Path to the ouput file.
     """
-    path1 = pathlib.Path(__file__).parents[1] / "Wochenplanersteller.xlsm"
+    path1 = pathlib.Path(__file__).parents[1] / "Template.xlsx"
     path2 = pathlib.Path(__file__).parents[1] / "Ergebnis.xlsx"
 
     wb1 = xw.Book(path1)
@@ -240,14 +249,16 @@ def write_text(inpath:pathlib.Path,ws:Worksheet) -> None:
 
 
 if __name__ == "__main__":
+    print("Reading input data -> 'Liste.xlsm'")
     inpath = pathlib.Path(__file__).parents[1] / "Liste.xlsm"
     df = pd.read_excel(inpath, sheet_name="Liste")
     df = df.dropna(subset="Anfangszeit")
+    print("Creating classes.")
     for index, row in df.iterrows():
         Termin(*row)
     for t in Termin.instances:
         t.check_overlap()
-
+    print("Loading template -> 'Template.xlsx'")
     path = load_template()
     wb = xl.load_workbook(path)
     ws = ws = wb[wb.sheetnames[0]]
@@ -258,7 +269,8 @@ if __name__ == "__main__":
         t.fill_colors(ws)
         t.add_border(ws)
         t.add_desc(ws)
-
+    print("Writing data to file -> Ergebnis.xlsx")
     write_text(inpath,ws)
 
     wb.save(path)
+    print("Created plan. Output in file -> Ergebnis.xlsx")
