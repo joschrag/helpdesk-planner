@@ -8,8 +8,6 @@ from openpyxl.styles import NamedStyle, Font, Border, Side, PatternFill
 import datetime as dt
 from typing import Any
 import time
-from pprint import pformat
-
 class Termin:
     """Class containing information about the events."""
 
@@ -21,7 +19,7 @@ class Termin:
         start: dt.time,
         finish: dt.time,
         tutor: str,
-        sp: str,
+        sp: tuple[str,str],
         ort: str,
     ) -> None:
         """Initialize the Termin class.
@@ -61,15 +59,15 @@ class Termin:
         for termin in self.instances:
             if not self == termin and termin.wt == self.wt:
                 if (
-                    (termin.start <= self.start <= termin.finish)
-                    or (termin.start <= self.finish <= termin.finish)
-                    or (self.start <= termin.start <= self.finish)
-                    or (self.start <= termin.finish <= self.finish)
+                    (termin.start <= self.start < termin.finish)
+                    or (termin.start < self.finish <= termin.finish)
+                    or (self.start <= termin.start < self.finish)
+                    or (self.start < termin.finish <= self.finish)
                 ):
                     self.deu.append(termin)
 
 
-    def correct_colss(self) -> None:
+    def correct_cols(self) -> None:
         """Correct columns if overlap exists."""
         for termin in self.deu:
             if termin.hasmoved:
@@ -192,13 +190,19 @@ class Termin:
         room_dict = {"Rüsselsheim": "G007", "WBS": "II-02", "online": "online"}
         name_cell = ws.cell(self.rows[0], self.cols[0])
         exp_cell = ws.cell(self.rows[0] + 1, self.cols[0])
+        exp2_cell = ws.cell(self.rows[1] + 2, self.cols[0])
         ort_cell = ws.cell(self.rows[1], self.cols[0])
         name_cell.value = self.tutor
         name_cell.font = Font(bold=True)
-        exp_cell.value = self.sp
+        if self.rows[1] - self.rows[0] > 2:
+            exp_cell.value, exp2_cell.value = self.sp
+        else:
+            exp_cell.value = "".join(self.sp)
         exp_cell.font = Font(bold=False)
+        exp2_cell.font = Font(bold=False)
         ort_cell.value = room_dict[self.ort]
         ort_cell.font = Font(bold=True)
+
 
 
 def load_template() -> pathlib.Path:
@@ -255,16 +259,19 @@ if __name__ == "__main__":
     df = df.dropna(subset="Anfangszeit")
     print("Creating classes.")
     for index, row in df.iterrows():
-        Termin(*row)
+        
+        day, start, end, tutor, sp1, sp2, location = row
+        sp : tuple = (sp1,sp2)
+        Termin(day,start,end,tutor,sp,location)
     for t in Termin.instances:
         t.check_overlap()
     print("Loading template -> 'Template.xlsx'")
     path = load_template()
     wb = xl.load_workbook(path)
-    ws = ws = wb[wb.sheetnames[0]]
+    ws = wb[wb.sheetnames[0]]
     for t in Termin.instances:
         if len(t.deu) > 0:
-            t.correct_colss()
+            t.correct_cols()
     for t in Termin.instances:
         t.fill_colors(ws)
         t.add_border(ws)
