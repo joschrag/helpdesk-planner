@@ -190,7 +190,7 @@ class Termin:
         room_dict = {"Rüsselsheim": "G007", "WBS": "II-02", "online": "online"}
         name_cell = ws.cell(self.rows[0], self.cols[0])
         exp_cell = ws.cell(self.rows[0] + 1, self.cols[0])
-        exp2_cell = ws.cell(self.rows[1] + 2, self.cols[0])
+        exp2_cell = ws.cell(self.rows[0] + 2, self.cols[0])
         ort_cell = ws.cell(self.rows[1], self.cols[0])
         name_cell.value = self.tutor
         name_cell.font = Font(bold=True)
