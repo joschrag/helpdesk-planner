@@ -4,14 +4,26 @@ import xlwings as xw
 import pathlib
 import openpyxl as xl
 from openpyxl.worksheet.worksheet import Worksheet
-from openpyxl.styles import NamedStyle, Font, Border, Side, PatternFill
+from openpyxl.styles import Font, Border, Side, PatternFill
 import datetime as dt
-from typing import Any
 import time
+
+
 class Termin:
     """Class containing information about the events."""
 
-    instances = set()
+    instances = []
+    wt_dict = {
+        "Montag": 0,
+        "Dienstag": 1,
+        "Mittwoch": 2,
+        "Donnerstag": 3,
+        "Freitag": 4,
+        "Samstag": 5,
+        "Sonntag": 6,
+    }
+    start_cols = [4, 6, 8, 10, 12, 14, 16]
+    cur_col: int = 4
 
     def __init__(
         self,
@@ -19,7 +31,7 @@ class Termin:
         start: dt.time,
         finish: dt.time,
         tutor: str,
-        sp: tuple[str,str],
+        sp: tuple[str, str],
         ort: str,
     ) -> None:
         """Initialize the Termin class.
@@ -39,12 +51,11 @@ class Termin:
         self.sp = sp
         self.ort = ort
         self.deu = []
-        self.__class__.instances.add(self)
+        if not self in self.__class__.instances:
+            self.__class__.instances.append(self)
         self.cols = self.day_to_cols()
         self.rows = self.time_to_row()
-        self.hasmoved = False
-        self.isLeft = False
-
+        self.col_add = 0
 
     def __str__(self) -> str:
         """Get string representation.
@@ -52,7 +63,9 @@ class Termin:
         Returns:
             str: string description.
         """
-        return "\n"+"\n".join([f"{pair[0]}: {pair[1]}" for pair in list(vars(self).items())])
+        return "\n" + "\n".join(
+            [f"{pair[0]}: {pair[1]}" for pair in list(vars(self).items())]
+        )
 
     def check_overlap(self) -> None:
         """Check if other Class object overlap timewise."""
@@ -66,36 +79,38 @@ class Termin:
                 ):
                     self.deu.append(termin)
 
-
     def correct_cols(self) -> None:
         """Correct columns if overlap exists."""
-        for termin in self.deu:
-            if termin.hasmoved:
-                self.isLeft = not termin.isLeft
-                self.hasmoved = True
-            else:
-                self.isLeft = True
-                self.hasmoved = True
-
-        if self.isLeft:
-            self.cols = (self.cols[0], self.cols[0])
+        if len(self.deu) > 0:
+            col_pos = [termin.col_add for termin in self.deu if termin != self]
+            for i in range(max(col_pos) + 2):
+                if i not in col_pos:
+                    self.col_add = i
+                    break
+            day_cols = self.day_to_cols()
+            self.cols = [day_cols[0] + self.col_add, day_cols[0] + self.col_add]
+            if day_cols[0] + self.col_add >= day_cols[1]:
+                self.__class__.start_cols[
+                    self.__class__.wt_dict[self.wt] + 1 :
+                ] = [
+                    col + 1
+                    for col in self.__class__.start_cols[
+                        self.__class__.wt_dict[self.wt] + 1 :
+                    ]
+                ]
         else:
-            self.cols = (self.cols[1], self.cols[1])
+            self.cols = self.day_to_cols()
 
-    def day_to_cols(self) -> tuple:
+    def day_to_cols(self) -> list:
         """Translate weekdays into column numbers.
 
         Returns:
             tuple: (start_col, end_col)
         """
-        m_dict = {
-            "Montag": (4, 5),
-            "Dienstag": (6, 7),
-            "Mittwoch": (8, 9),
-            "Donnerstag": (10, 11),
-            "Freitag": (12, 13),
-        }
-        return m_dict[self.wt]
+        return [
+            self.__class__.start_cols[self.__class__.wt_dict[self.wt]],
+            self.__class__.start_cols[self.__class__.wt_dict[self.wt] + 1] - 1,
+        ]
 
     def time_to_row(self) -> tuple:
         """Translate start and finish times into rows.
@@ -190,19 +205,18 @@ class Termin:
         room_dict = {"Rüsselsheim": "G007", "WBS": "II-02", "online": "online"}
         name_cell = ws.cell(self.rows[0], self.cols[0])
         exp_cell = ws.cell(self.rows[0] + 1, self.cols[0])
-        exp2_cell = ws.cell(self.rows[1] + 2, self.cols[0])
+        exp2_cell = ws.cell(self.rows[0] + 2, self.cols[0])
         ort_cell = ws.cell(self.rows[1], self.cols[0])
         name_cell.value = self.tutor
         name_cell.font = Font(bold=True)
         if self.rows[1] - self.rows[0] > 2:
             exp_cell.value, exp2_cell.value = self.sp
         else:
-            exp_cell.value = "".join(self.sp)
+            exp_cell.value = "".join(str(self.sp))
         exp_cell.font = Font(bold=False)
         exp2_cell.font = Font(bold=False)
         ort_cell.value = room_dict[self.ort]
         ort_cell.font = Font(bold=True)
-
 
 
 def load_template() -> pathlib.Path:
@@ -231,25 +245,28 @@ def load_template() -> pathlib.Path:
     wb.save(path2)
     return path2
 
-def write_text(inpath:pathlib.Path,ws:Worksheet) -> None:
+
+def write_text(inpath: pathlib.Path, ws: Worksheet) -> None:
     """Write the timeframe of the plan into the excel.
 
     Args:
         inpath (pathlib.Path): input path for the date
         ws (Worksheet): output worksheet
-    """    
+    """
     df = pd.read_excel(inpath, sheet_name="KW")
-    date:dt.datetime = pd.to_datetime(df.iloc[0,0])# type: ignore    
+    date: dt.datetime = pd.to_datetime(df.iloc[0, 0])  # type: ignore
     cal_week_str = date.strftime("%V")
     cal_week_date = date.strftime("%G %V")
-    startdate = time.asctime(time.strptime(f"{cal_week_date} 0", "%Y %W %w")) 
+    startdate = time.asctime(time.strptime(f"{cal_week_date} 0", "%Y %W %w"))
     startdate = dt.datetime.strptime(startdate, "%a %b %d %H:%M:%S %Y")
     friday = startdate - dt.timedelta(days=2)
     monday = startdate - dt.timedelta(days=6)
     friday_str = friday.strftime("%d.%m.%Y")
     monday_str = monday.strftime("%d.%m.%Y")
-    out_str = f"Helpdeskplan für KW {cal_week_str} von {monday_str} bis {friday_str}."
-    ws.cell(2,1).value = out_str
+    out_str = (
+        f"Helpdeskplan für KW {cal_week_str} von {monday_str} bis {friday_str}."
+    )
+    ws.cell(2, 1).value = out_str
 
 
 if __name__ == "__main__":
@@ -257,12 +274,24 @@ if __name__ == "__main__":
     inpath = pathlib.Path(__file__).parents[1] / "Liste.xlsm"
     df = pd.read_excel(inpath, sheet_name="Liste")
     df = df.dropna(subset="Anfangszeit")
+    df["Tag"] = pd.Categorical(
+        df["Tag"],
+        [
+            "Montag",
+            "Dienstag",
+            "Mittwoch",
+            "Donnerstag",
+            "Freitag",
+            "Samstag",
+            "Sonntag",
+        ],
+    )
+    df = df.sort_values(["Tag"])
     print("Creating classes.")
     for index, row in df.iterrows():
-        
         day, start, end, tutor, sp1, sp2, location = row
-        sp : tuple = (sp1,sp2)
-        Termin(day,start,end,tutor,sp,location)
+        sp: tuple = (sp1, sp2)
+        Termin(day, start, end, tutor, sp, location)
     for t in Termin.instances:
         t.check_overlap()
     print("Loading template -> 'Template.xlsx'")
@@ -273,11 +302,21 @@ if __name__ == "__main__":
         if len(t.deu) > 0:
             t.correct_cols()
     for t in Termin.instances:
+        if len(t.deu) == 0:
+            t.correct_cols()
+    for t in Termin.instances:
         t.fill_colors(ws)
         t.add_border(ws)
         t.add_desc(ws)
     print("Writing data to file -> Ergebnis.xlsx")
-    write_text(inpath,ws)
+    write_text(inpath, ws)
 
     wb.save(path)
     print("Created plan. Output in file -> Ergebnis.xlsx")
+    print(
+        "+" * 60,
+        "ACHTUNG!!!",
+        "Template anpassen falls nötig!!!",
+        "+" * 60,
+        sep="\n",
+    )
