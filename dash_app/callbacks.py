@@ -1,6 +1,5 @@
 from dash import callback, Input, Output, State, ctx
 from pathlib import Path
-from sql.sql_handler import SQLHandler
 import pandas as pd
 import datetime as dt
 import plotly.graph_objects as go
@@ -10,8 +9,6 @@ import dash_bootstrap_components as dbc
 from dash import dcc
 from src.font_size import get_text_dims
 
-
-db_path = Path.cwd() / "sql" / "example.db"
 
 
 def find_lowest_missing(arr):
