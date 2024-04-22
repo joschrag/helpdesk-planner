@@ -1,3 +1,6 @@
 .Select-menu-outer {
     display : block !important;
     }
+.dash-cell-value, .column-header-name {
+    color: black !important;
+}
