@@ -459,7 +459,7 @@ def create_chart(_, data, date_str, end_day_val, day_widths, fs_data):
         fig.update_layout(
             margin=dict(r=50, l=50, b=50, t=125),
             title={
-                "text": "Helpdeskplan für KW 13",
+                "text": f"Helpdeskplan für KW {sel_week}",
                 "y": 0.9,
                 "x": 0.5,
                 "xanchor": "center",
