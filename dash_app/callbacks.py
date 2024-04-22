@@ -10,7 +10,6 @@ from dash import dcc
 from src.font_size import get_text_dims
 
 
-
 def find_lowest_missing(arr):
     # Sort the array
     arr_sorted = np.sort(arr)
@@ -257,9 +256,13 @@ def toggle_collapse_fs(n, is_open):
     State("end_day_dd", "value"),
     State("day_width", "children"),
     State("font_sizes", "data"),
+    State("plan-w", "value"),
+    State("plan-h", "value"),
     prevent_initial_call=True,
 )
-def create_chart(_, data, date_str, end_day_val, day_widths, fs_data):
+def create_chart(
+    _, data, date_str, end_day_val, day_widths, fs_data, width, height
+):
     if (
         data is not None
         and date_str is not None
@@ -313,6 +316,18 @@ def create_chart(_, data, date_str, end_day_val, day_widths, fs_data):
         df = df.sort_values(["Startzeitpunkt", "Endzeitpunkt"]).reset_index(
             drop=True
         )
+        df[
+            [
+                "Tag",
+                "Startzeit",
+                "Endzeit",
+                "Tutor:in",
+                "Schwerpunkt",
+                "Ort",
+                "Raum",
+                "color",
+            ]
+        ].to_csv("./timetable.csv", index=False)
         fs_df = (
             pd.DataFrame(fs_data)
             .astype(int)
@@ -320,7 +335,13 @@ def create_chart(_, data, date_str, end_day_val, day_widths, fs_data):
             .reset_index(drop=True)
         )
         fs_df.to_csv("./font_size.csv", index=False)
-        layout = go.Layout(paper_bgcolor="#fff", plot_bgcolor="#fff")
+        layout = go.Layout(
+            paper_bgcolor="#fff",
+            plot_bgcolor="#fff",
+            #autosize=False,
+            width=width,
+            height=height,
+        )
         fig = go.Figure(layout=layout)
         sd_df = {
             tag: df.loc[df.Tag == tag, :].reset_index(names=["old_ind"])
@@ -358,8 +379,8 @@ def create_chart(_, data, date_str, end_day_val, day_widths, fs_data):
 
         fig.update_xaxes(
             range=[
-                -0.5,
-                day_offset[-1] + 0.5,
+                -0.05,
+                day_offset[-1] + 0.05,
             ],
             tickmode="array",
             tickvals=x_tick_vals,
@@ -371,6 +392,8 @@ def create_chart(_, data, date_str, end_day_val, day_widths, fs_data):
             bargap=0.1,
             bargroupgap=0,
         )
+
+        print(f"{df=}")
 
         for _, wd_df in sd_df.items():
             for _, row in wd_df.iterrows():
@@ -456,28 +479,30 @@ def create_chart(_, data, date_str, end_day_val, day_widths, fs_data):
                 add_annotations(
                     row, fig, font, px_font_size, max_width, day_width
                 )
+
+        print(height)
+        fig.add_layout_image(
+            source="https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Logo-Hochschule-RheinMain.svg/2560px-Logo-Hochschule-RheinMain.svg.png",
+            xref="paper",
+            yref="paper",
+            x=0.8,
+            y=1,
+            sizex=0.6,
+            sizey=0.5,
+            xanchor="left",
+            yanchor="bottom",
+            sizing="contain"
+        )
         fig.update_layout(
-            margin=dict(r=50, l=50, b=50, t=125),
+            margin={"autoexpand":True,
+                    "t":height*0.3},
             title={
                 "text": f"Helpdeskplan für KW {sel_week}",
-                "y": 0.9,
                 "x": 0.5,
                 "xanchor": "center",
                 "yanchor": "top",
             },
         )
-        fig.add_layout_image(
-            source="https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Logo-Hochschule-RheinMain.svg/2560px-Logo-Hochschule-RheinMain.svg.png",
-            xref="paper",
-            yref="paper",
-            x=1,
-            y=1,
-            sizex=0.6,
-            sizey=0.6,
-            xanchor="right",
-            yanchor="bottom",
-        )
-
         return fig
 
 

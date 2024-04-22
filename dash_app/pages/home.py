@@ -42,23 +42,29 @@ fs_table = dash_table.DataTable(
     id="font_sizes", editable=True, row_deletable=True
 )
 
-col_btn2 = dbc.Button(
-            "Open font size control",
-            id="collapse-button-fs",
-            className="mb-3",
-            color="primary",
-            n_clicks=0,
-        ),
+col_btn2 = (
+    dbc.Button(
+        "Open font size control",
+        id="collapse-button-fs",
+        className="mb-3",
+        color="primary",
+        n_clicks=0,
+    ),
+)
 collapse2 = html.Div(
     [
-        
         dbc.Collapse(
-            [dbc.Row(fs_table),dbc.Row(
-            dbc.Col(
-                html.Button("Add Row", id="editing-rows-button-fs", n_clicks=0),
-                width=3,
-            )
-        ),],
+            [
+                dbc.Row(fs_table),
+                dbc.Row(
+                    dbc.Col(
+                        html.Button(
+                            "Add Row", id="editing-rows-button-fs", n_clicks=0
+                        ),
+                        width=3,
+                    )
+                ),
+            ],
             id="collapse-fs",
             is_open=False,
         ),
@@ -69,7 +75,10 @@ data_table = dash_table.DataTable(
     id="timetable", editable=True, row_deletable=True
 )
 
-color_btn_link = dbc.Button("Link to available colors",href='https://developer.mozilla.org/en-US/docs/Web/CSS/named-color')
+color_btn_link = dbc.Button(
+    "Link to available colors",
+    href="https://developer.mozilla.org/en-US/docs/Web/CSS/named-color",
+)
 
 layout = dbc.Container(
     [
@@ -82,7 +91,7 @@ layout = dbc.Container(
                 width=3,
             )
         ),
-        dbc.Row([dbc.Col(col_btn2),dbc.Col(color_btn_link)]),
+        dbc.Row([dbc.Col(col_btn2), dbc.Col(color_btn_link)]),
         dbc.Row(collapse2),
         dbc.Row(
             dbc.Col(
@@ -98,6 +107,24 @@ layout = dbc.Container(
             )
         ),
         dbc.Row(id="day_width"),
+        dbc.Row(
+            [
+                dbc.Col(
+                    [
+                        html.Label("Plot width"),
+                        dcc.Input(1800, type="number", min=10, id="plan-w"),
+                    ],
+                    width=3,
+                ),
+                dbc.Col(
+                    [
+                        html.Label("Plot height"),
+                        dcc.Input(600, type="number", min=10, id="plan-h"),
+                    ],
+                    width=3,
+                ),
+            ]
+        ),
         dbc.Row(
             dbc.Col(
                 html.Button("Create Plan", id="create-plan", n_clicks=0),
