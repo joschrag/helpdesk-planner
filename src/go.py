@@ -55,7 +55,7 @@ class Termin:
             self.__class__.instances.append(self)
         self.cols = self.day_to_cols()
         self.rows = self.time_to_row()
-        self.col_add = 0
+        self.col_add = None
 
     def __str__(self) -> str:
         """Get string representation.
@@ -82,14 +82,14 @@ class Termin:
     def correct_cols(self) -> None:
         """Correct columns if overlap exists."""
         if len(self.deu) > 0:
-            col_pos = [termin.col_add for termin in self.deu if termin != self]
+            col_pos = [termin.col_add for termin in self.deu if termin != self if termin.col_add is not None] or [-1]
             for i in range(max(col_pos) + 2):
                 if i not in col_pos:
                     self.col_add = i
                     break
             day_cols = self.day_to_cols()
             self.cols = [day_cols[0] + self.col_add, day_cols[0] + self.col_add]
-            if day_cols[0] + self.col_add >= day_cols[1]:
+            if day_cols[0] + self.col_add >= day_cols[1] + 1:
                 self.__class__.start_cols[
                     self.__class__.wt_dict[self.wt] + 1 :
                 ] = [
@@ -143,7 +143,7 @@ class Termin:
         Args:
             ws (Worksheet): output Worksheet
         """
-        cols = {"Rüsselsheim": "E2EFDA", "WBS": "DDEBF7", "online": "FFF2CC"}
+        cols = {"Rüsselsheim": "E2EFDA", "WBS": "DDEBF7", "online": "FFF2CC", "KSR":"F8CBAD"}
         color = cols[self.ort]
         for rows in ws.iter_rows(
             min_row=self.rows[0],
@@ -202,7 +202,7 @@ class Termin:
         Args:
             ws (Worksheet): output worksheet
         """
-        room_dict = {"Rüsselsheim": "G007", "WBS": "II-02", "online": "online"}
+        room_dict = {"Rüsselsheim": "G007", "WBS": "II-02", "online": "online", "KSR":"KSR"}
         name_cell = ws.cell(self.rows[0], self.cols[0])
         exp_cell = ws.cell(self.rows[0] + 1, self.cols[0])
         exp2_cell = ws.cell(self.rows[0] + 2, self.cols[0])
@@ -287,11 +287,12 @@ if __name__ == "__main__":
         ],
     )
     df = df.sort_values(["Tag"])
+    df = df.fillna(" ")
     print("Creating classes.")
     for index, row in df.iterrows():
         day, start, end, tutor, sp1, sp2, location = row
         sp: tuple = (sp1, sp2)
-        Termin(day, start, end, tutor, sp, location)
+        termin = Termin(day, start, end, tutor, sp, location)
     for t in Termin.instances:
         t.check_overlap()
     print("Loading template -> 'Template.xlsx'")
