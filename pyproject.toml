@@ -1,2 +1,18 @@
 [tool.black]
 line-length = 80
+[tool.poetry]
+name = "helpdesk-planner"
+description = "A dash app to visualize a timetable."
+version = "0.1.0"
+license = "MIT"
+authors = ["Jonas Schrage <y47mccpxf@mozmail.com>",
+"Lena Schrage <lena.schrage@student.hs-rm.de>"]
+package-mode=false
+[tool.poetry.dependencies]
+python="^3.10"
+numpy="^1.24.2"
+openpyxl="^3.1.1"
+pandas="^2.2.0"
+dash="^2.16.1"
+plotly="^5.20.0"
+dash-bootstrap-components="^1.5.0"
